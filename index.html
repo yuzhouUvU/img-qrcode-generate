@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>二维码图合成</title>
+    <style>
+        /* 美化样式 */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        input[type="file"], input[type="text"], button {
+            width: 100%;
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            box-sizing: border-box;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+
+        button {
+            background-color: #007BFF;
+            color: white;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+            transition: background-color 0.3s ease-in-out;
+        }
+        input[type="file"]:focus,
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #007BFF;
+            transition: border-color 0.3s ease-in-out;
+        }
+        button:active {
+            transform: scale(0.98);
+            transition: transform 0.1s ease-out;
+        }
+    </style>
+</head>
+<body>
+    <h2>二维码图合成</h2>
+    <label for="origin">请选择图片:</label>
+    <input id="origin" type="file" accept="image/*">
+    <label for="qr_text">请输入二维码内容:</label>
+    <input id="qr_text" type="text">
+    <button onclick="onGendClick()">生成</button>
+    <script src="./qrcode.min.js"></script>
+    <script>
+        function test(origin_img,code_img){
+            let img = new Image();
+            img.src = URL.createObjectURL(origin_img);
+            img.onload = function(){
+                let img2 = new Image();
+                img2.src = code_img;
+                img2.onload = function(){
+                    let canvas = document.createElement("canvas");
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    let ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0);
+                    let imageData = ctx.getImageData(0, 0, img.width, img.height);
+                    let pixelData = imageData.data;
+                    ctx.fillStyle = 'rgba(255,255,255,0)';
+                    ctx.fillRect(0,0, img.width, img.height);
+
+                    let x = img.width /2 - img2.width / 2;
+                    let y = img.height / 2 - img2.height / 2;
+
+                    x = x+img2.width>img.width?0:x;
+                    y = y+img2.height>img.height?0:y;
+
+                    ctx.drawImage(img2, x, y);
+                    let pixelData2 = ctx.getImageData(0, 0, img.width, img.height).data;
+                    ctx.clearRect(0,0, img.width, img.height);
+
+                    for(let i = 0; i < pixelData2.length; i += 4){
+                        if(!pixelData2[i]){
+                            let alpha = 150;
+                            pixelData[i] = parseInt((pixelData[i] - (255-alpha)) / alpha * 255);
+                            pixelData[i+1] = parseInt((pixelData[i+1] - (255-alpha)) / alpha * 255);
+                            pixelData[i+2] = parseInt((pixelData[i+2] - (255-alpha)) / alpha * 255);
+                            pixelData[i+3] = alpha;
+                        }
+                    }
+
+                    imageData.data.set(pixelData);
+                    ctx.putImageData(imageData, 0, 0);
+                    
+                    let dataUrl = canvas.toDataURL("image/png");
+                    let a = document.createElement("a");
+                    a.href = dataUrl;
+                    a.download = "合成图.png";
+                    a.click();
+                }
+            }
+        }
+
+        async function onGendClick(event) {
+            let origin_files = document.getElementById('origin').files;
+            let qr_text = document.getElementById('qr_text').value;
+            if(qr_text == ''){
+                alert('请输入二维码内容.');
+                return;
+            }
+            if (origin_files.length > 0) {
+                let url = await QRCode.toDataURL(qr_text, {height: 200,width: 200});
+                test(origin_files[0],url);
+            } else {
+                alert('请选择图片.');
+            }
+        }
+    </script>
+</body>
+</html>
